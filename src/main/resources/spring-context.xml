@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans-4.2.xsd 
+		http://www.springframework.org/schema/context 
+		http://www.springframework.org/schema/context/spring-context-4.2.xsd 
+		http://www.springframework.org/schema/tx
+		http://www.springframework.org/schema/tx/spring-tx-4.2.xsd
+		http://www.springframework.org/schema/aop 
+		http://www.springframework.org/schema/aop/spring-aop.xsd">
+	
+	<description>Spring Configuration</description>
+	
+	<!-- 开启aop操作 -->    
+    <aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+    
+	<!-- 扫描包 -->
+	<context:component-scan base-package="com.zj.zsite"></context:component-scan>
+	
+	<!-- 加载配置文件 -->
+	<context:property-placeholder ignore-unresolvable="true" location="classpath:config.properties" />
+	
+	<!-- 配置c3p0连接池 -->
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+		<!-- 注入属性值 -->
+		<property name="driverClass" value="${jdbc.driver}"></property>
+		<property name="jdbcUrl" value="${jdbc.url}"></property>
+		<property name="user" value="${jdbc.username}"></property>
+		<property name="password" value="${jdbc.password}"></property>
+	</bean>
+	
+	<!-- 配置hibernate的sessionFactory实例，通过spring提供的LocalSessionFactoryBean 进行配置 -->
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<!-- 配置数据源属性 -->
+		<property name="dataSource" ref="dataSource"></property>
+		
+		<!-- 指定使用hibernate核心配置文件 -->
+		<property name="configLocations" value="classpath:spring-hibernate.xml"></property>
+	</bean>
+	
+	<!-- 配置spring的声明式事务 -->
+	<!-- 第一步 配置事务管理器 -->
+	<bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory"></property>
+	</bean>
+
+	<!-- 通过AOP配置提供事务增强，让service包下所有Bean的所有方法拥有事务 -->  
+    <aop:config proxy-target-class="true">  
+        <aop:pointcut id="serviceMethod" expression=" execution(* com.tz.film..*(..))" />  
+        <aop:advisor pointcut-ref="serviceMethod" advice-ref="txAdvice" />  
+    </aop:config>
+    <tx:advice id="txAdvice" transaction-manager="transactionManager">  
+        <tx:attributes>
+        	<!-- 传播行为 -->
+            <tx:method name="*" />  
+        </tx:attributes>  
+    </tx:advice>
+	
+	<!-- 第三步 开启事务注解 -->
+	<tx:annotation-driven transaction-manager="transactionManager"/>
+	
+</beans>
